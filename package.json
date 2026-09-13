@@ -1,0 +1,44 @@
+{
+  "name": "rc-notifications",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "packageManager": "pnpm@10.34.5",
+  "scripts": {
+    "dev:api": "tsx --env-file-if-exists=.env src/api/main.ts",
+    "dev:worker": "tsx --env-file-if-exists=.env src/worker/main.ts",
+    "dev:mock": "tsx scripts/mock-provider.ts",
+    "db:up": "docker compose up -d --wait redis",
+    "demo": "tsx --env-file-if-exists=.env scripts/demo.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "start:api": "node --env-file-if-exists=.env dist/src/api/main.js",
+    "start:worker": "node --env-file-if-exists=.env dist/src/worker/main.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "benchmark": "tsx --env-file-if-exists=.env scripts/benchmark.ts",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.1",
+    "@hono/zod-openapi": "^1.6.3",
+    "bullmq": "^6.3.4",
+    "hono": "^4.13.7",
+    "ioredis": "^6.0.0",
+    "ipaddr.js": "^2.5.0",
+    "p-timeout": "^7.0.2",
+    "zod": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "prettier": "^3.9.6",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

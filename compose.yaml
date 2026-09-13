@@ -1,0 +1,58 @@
+x-app: &app
+  build: .
+  environment:
+    NODE_ENV: development
+    REDIS_URL: redis://redis:6379
+    CALLERS_JSON: '[{"id":"demo","token":"demo-token-change-me","allowedOrigins":["http://mock:4000"]}]'
+    ALLOW_PRIVATE_TARGETS: 'true'
+    RETRY_BASE_MS: '500'
+    RETRY_CAP_MS: '2000'
+  init: true
+  stop_grace_period: 45s
+
+services:
+  redis:
+    image: redis:8-alpine
+    command: ['redis-server', '/usr/local/etc/redis/redis.conf']
+    ports:
+      - '127.0.0.1:56379:6379'
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  api:
+    <<: *app
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          'fetch("http://127.0.0.1:3000/readyz").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))',
+        ]
+      interval: 5s
+      timeout: 4s
+      retries: 10
+  worker:
+    <<: *app
+    command: ['node', 'dist/src/worker/main.js']
+    depends_on:
+      redis:
+        condition: service_healthy
+  mock:
+    <<: *app
+    command: ['node', 'dist/scripts/mock-provider.js']
+    ports:
+      - '127.0.0.1:4000:4000'
+
+volumes:
+  redis_data:

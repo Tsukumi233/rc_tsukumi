@@ -1,0 +1,58 @@
+# Started under a unique project name by test:e2e. No shared ports or data volumes.
+x-app: &app
+  build: .
+  environment:
+    NODE_ENV: test
+    REDIS_URL: redis://redis:6379
+    CALLERS_JSON: '[{"id":"demo","token":"demo-token-change-me","allowedOrigins":["http://mock:4000"]},{"id":"other","token":"other-token-change-me","allowedOrigins":["http://mock:4000"]}]'
+    ALLOW_PRIVATE_TARGETS: 'true'
+    HTTP_TIMEOUT_MS: '3000'
+    LOCK_MS: '5000'
+    STALLED_INTERVAL_MS: '500'
+    WORKER_CONCURRENCY: '2'
+    MAX_ATTEMPTS: '3'
+    NOTIFICATION_TTL_MS: '60000'
+    RETRY_BASE_MS: '100'
+    RETRY_CAP_MS: '200'
+  init: true
+  stop_grace_period: 5s
+  depends_on:
+    redis:
+      condition: service_healthy
+
+services:
+  redis:
+    image: redis:8-alpine
+    command: ['redis-server', '/usr/local/etc/redis/redis.conf']
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 1s
+      timeout: 2s
+      retries: 30
+  api:
+    <<: *app
+    ports: ['127.0.0.1::3000']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          'fetch("http://127.0.0.1:3000/readyz").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))',
+        ]
+      interval: 1s
+      timeout: 4s
+      retries: 30
+  worker:
+    <<: *app
+    command: ['node', 'dist/src/worker/main.js']
+  mock:
+    <<: *app
+    command: ['node', 'dist/scripts/mock-provider.js']
+    ports: ['127.0.0.1::4000']
+
+volumes:
+  redis_data:
